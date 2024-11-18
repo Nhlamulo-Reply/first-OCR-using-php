@@ -1,55 +1,41 @@
-<?php 
-include_once 'dbconnect.php';
+<?php
 
-//code to extract text
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
 
+    $url = 'http://127.0.0.1:5000/process_image/upload-image';
 
-  if(isset($_FILES['image'])){
-    $file_name = $_FILES['image']['name'];
-    $file_tmp =$_FILES['image']['tmp_name'];
-    move_uploaded_file($file_tmp,"images/".$file_name);
-    echo "<h3>Image Upload Success</h3>";
-    echo '<img src="images/'.$file_name.'" style="width:50%">';
-    
-    shell_exec('"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe" "C:\\xampp\\htdocs\\OCR\\images\\'.$file_name.'" out');
-    
-    echo "<br><h3>OCR after reading</h3><br><pre>";
-    
-    $myfile = fopen("out.txt", "r") or die("Unable to open file!");
-    echo fread($myfile,filesize("out.txt"));
-    fclose($myfile);
-    echo "</pre>";
+    $image = $_FILES['image']['tmp_name'];
+    $imageName = $_FILES['image']['name'];
+    $longi = $_POST["Longitude"];
+    $lati = $_POST["Latitude"];
+    $username = $_POST["UserID"];
+
+    $ch = curl_init();
+
+    $cfile = new CURLFile($image, $_FILES['image']['type'], $imageName);
+
+    $data = array('image' => $cfile,
+        'longitude' => $longi,
+        'latitude' => $lati,
+        'username' => $username
+
+                     );
+
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+    $response = curl_exec($ch);
+
+    if ($response === false) {
+        echo 'Error: ' . curl_error($ch);
+    } else {
+        echo 'Response from server: ' . $response;
     }
 
-
-  if(isset($_POST['submit'])){
-
-    $f = fopen("out.txt", "r");
-      while(!feof($f)) { 
-         $row = explode(" ", fgets($f));
-    
-         $name = $row[0];
-         $surname = $row[1];
-         $place = $row[2];
-      
-         $sql=("INSERT INTO test(name, surname, place) 
-               VALUES ('$name', '$surname', '$place')") ;
-
-
-  
-           if ($conn->query($sql) === TRUE) {
-            echo "New record created successfully";
-          } else {
-            echo "Error: " . $sql . "<br>" . $conn->error;
-          }
-        }
-        fclose($f);
-    } 
-
-
-
-
- 
-
-
-
+    curl_close($ch);
+} else {
+    echo "No image uploaded or invalid request method.";
+}
+?>
